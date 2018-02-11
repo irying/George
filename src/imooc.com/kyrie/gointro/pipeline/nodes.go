@@ -1,6 +1,10 @@
 package pipeline
 
-import "sort"
+import (
+	"sort"
+	"io"
+	"encoding/binary"
+)
 
 func ArraySource( a ...int ) <- chan int {
 	out := make(chan int)
@@ -50,5 +54,25 @@ func Merge(in1, in2 <-chan int) <-chan int {
 		}
 		close(out)
 	}()
+	return  out
+}
+
+func ReaderSource(reader io.Reader) <-chan int {
+	out := make(chan int)
+	go func() {
+		buffer := make([]byte, 8)
+		for {
+			n, err := reader.Read(buffer)
+			if n > 0 {
+				v := int(binary.BigEndian.Uint64(buffer))
+				out <- v
+			}
+			if err !=nil {
+				break
+			}
+		}
+		close(out)
+	}()
+	
 	return  out
 }
