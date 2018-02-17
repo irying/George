@@ -67,7 +67,10 @@ func saveOneByOne(p Person) bool {
 	return true
 }
 
-//3个细节 1是goroutine池，循环放东西到缓冲区
+//3个细节
+// 1.是goroutine池，循环放东西到缓冲区
+// 2.在收发两端都有并发需求下，使用非缓冲通道作为元素值传输介质是不合适的
+// 3.如果已经没有人员信息可取了（!ok），还要检查被启用的goroutine是否运行完毕（==）
 func fetchPerson(origins chan<- Person) {
 	originCapacity := cap(origins)
 	buffered := originCapacity > 0
@@ -84,7 +87,7 @@ func fetchPerson(origins chan<- Person) {
 					}
 					time.Sleep(time.Nanosecond)
 				}
-				fmt.Println("All the infomation has been fetched too")
+				fmt.Println("All the infomation has been fetched")
 				close(origins)
 				break
 			}
@@ -103,7 +106,7 @@ func fetchPerson(origins chan<- Person) {
 }
 
 func fetchOneByOne() (Person, bool) {
-	if personCount < personTotal {
+	if personCount < personTotal{
 		p := persons[personCount]
 		personCount++
 		return p, true
@@ -133,17 +136,18 @@ func getPersonHandler() PersonHandler {
 	return PersonHandlerImpl{}
 }
 
-func (handler PersonHandlerImpl) Batch(origs <-chan Person) <-chan Person {
-	dests := make(chan Person, 100)
+func (handler PersonHandlerImpl) Batch(origins <-chan Person) <-chan Person {
+	destinations := make(chan Person, 100)
 	go func() {
-		for p := range origs {
-			handler.Handle(&p)
-			dests <- p
+		for item := range origins {
+			handler.Handle(&item)
+			destinations <- item
 		}
 		fmt.Println("All the information has been handled.")
-		close(dests)
+		close(destinations)
 	}()
-	return dests
+
+	return destinations
 }
 
 func (handler PersonHandlerImpl) Handle(orig *Person) {
