@@ -60,3 +60,12 @@ type RawResponse struct {
 	Error error
 	Elapse time.Duration // 处理耗时
 }
+
+type CallResult struct {
+	Id int64
+	Request RawRequest
+	Response RawResponse
+	Code ResultCode
+	Msg string
+	Elapse time.Duration
+}
