@@ -3,22 +3,72 @@ package loadgen
 import (
 	"imooc.com/kyrie/gointro/loadgen/lib"
 	"time"
+	"log"
+	"fmt"
+	"errors"
 )
 
 type myGenerator struct {
-	caller lib.Caller
-	timeoutNs time.Duration
-	lps uint32
-	durationNs time.Duration  // 负载持续时间，单位纳秒
-	tickets lib.GoTickets
-	stopSign chan byte
-	cancelSign byte
-	endSign chan byte
-	callCount uint64
-	status lib.GenStatus
-	resultCh chan *lib.CallResult // 数组和切片不是并发安全的，要用通道
+	caller     lib.Caller
+	timeoutNs  time.Duration
+	lps        uint32
+	durationNs time.Duration        // 负载持续时间，单位纳秒
+	tickets    lib.GoTickets
+	stopSign   chan byte            // 停止信号的传递通道
+	cancelSign byte                 // 取消发送后续结果的信号
+	endSign    chan byte            // 完结信号的传递通道，同时被用于传递调用执行计数。
+	callCount  uint64
+	status     lib.GenStatus
+	resultCh   chan *lib.CallResult // 数组和切片不是并发安全的，要用通道
 }
 
-func NewGenerator()  {
-	
+func NewGenerator(
+caller lib.Caller,
+timeoutNs time.Duration,
+lps uint32,
+durationNs time.Duration,
+resultCh chan *lib.CallResult) (lib.Generator, error) {
+	log.Println("New a load generator...")
+	log.Println("Checking the parameters...")
+	// Checking the parameters
+	var errMsg string
+	if caller == nil {
+		errMsg = fmt.Sprintln("Invalid caller!")
+	}
+
+	if timeoutNs == 0 {
+		errMsg
+	}
+	if timeoutNs == 0 {
+		errMsg = fmt.Sprintln("Invalid timeoutNs!")
+	}
+	if lps == 0 {
+		errMsg = fmt.Sprintln("Invalid lps(load per second)!")
+	}
+	if durationNs == 0 {
+		errMsg = fmt.Sprintln("Invalid durationNs!")
+	}
+	if resultCh == nil {
+		errMsg = fmt.Sprintln("Invalid result channel!")
+	}
+	if errMsg != "" {
+		return nil, errors.New(errMsg)
+	}
+	gen := &myGenerator{
+		caller: caller,
+		timeoutNs:timeoutNs,
+		lps:lps,
+		durationNs:durationNs,
+		stopSign:make(chan byte, 1),
+		cancelSign:0,
+		status:lib.STATUS_ORIGINAL,
+		resultCh:resultCh,
+	}
+	log.Printf("Passed. (timeoutNs=%v, lps=%d, durationNs=%v)", timeoutNs, lps, durationNs)
+	err := gen.init()
+	if err != nil {
+		return nil, err
+	}
+
+	return gen, nil
 }
