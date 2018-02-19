@@ -204,7 +204,7 @@ func (gen *myGenerator) asyncCall() {
 // 1.设定throttle
 // 2.AfterFunc 虽然看起来是初始化停止信号，但实际做的是持续一段时间就over
 // 3.初始化endSign通道、状态、调用计数
-func (gen *myGenerator) Start() ()  {
+func (gen *myGenerator) Start() {
 	log.Println("Starting load generator...")
 	// 设定节流阀
 	var throttle <-chan time.Time
@@ -237,4 +237,19 @@ func (gen *myGenerator) Start() ()  {
 		gen.status = lib.STATUS_STOPPED
 		log.Printf("Stopped. (callCount=%d)\n", callCount)
 	}()
+}
+
+// stop方法要考虑的就是前置检查了
+func (gen *myGenerator) Stop() (uint64, bool) {
+	if gen.stopSign == nil {
+		return 0, false
+	}
+	if gen.status != lib.STATUS_STARTED {
+		return 0, false
+	}
+	gen.status = lib.STATUS_STOPPED
+	gen.stopSign <- 1
+	callCount := <-gen.endSign
+
+	return callCount, true
 }
