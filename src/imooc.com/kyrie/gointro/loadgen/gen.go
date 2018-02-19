@@ -96,3 +96,25 @@ func (gen *myGenerator) init() error {
 	log.Printf("Initialized. (concurrency=%d)", gen.concurrency)
 	return nil
 }
+
+func (gen *myGenerator) genLoad(throttle <-chan time.Time)  {
+	callCount := uint64(0)
+	Loop:
+		for ;; callCount++ {
+			select {
+			case <-gen.stopSign:
+				gen.handleStopSign(callCount)
+				break Loop
+			default:
+			}
+			gen.asynCall()
+			if gen.lps > 0 {
+				select {
+				case <-gen.cancelSign:
+						gen.handleStopSign(callCount)
+						break Loop
+				case <-throttle
+				}
+			}
+		}
+}
