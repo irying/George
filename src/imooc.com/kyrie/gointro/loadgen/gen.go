@@ -253,3 +253,27 @@ func (gen *myGenerator) Stop() (uint64, bool) {
 
 	return callCount, true
 }
+
+func (gen *myGenerator) interact(rawReq *lib.RawRequest) *lib.RawResponse {
+	if rawReq == nil {
+		return &lib.RawResponse{Id: -1, Error: errors.New("Invalid raw request.")}
+	}
+	start := time.Now().Nanosecond()
+	resp, err := gen.caller.Call(rawReq.Request, gen.timeoutNs)
+	end := time.Now().Nanosecond()
+	elapsedTime := time.Duration(end - start)
+	var rawResp lib.RawResponse
+	if err != nil {
+		errMsg := fmt.Sprintf("Sync Call Error: %s.", err)
+		rawResp = lib.RawResponse{
+			Id:     rawReq.Id,
+			Error:    errors.New(errMsg),
+			Elapse: elapsedTime}
+	} else {
+		rawResp = lib.RawResponse{
+			Id:     rawReq.Id,
+			Response:   resp,
+			Elapse: elapsedTime}
+	}
+	return &rawResp
+}
