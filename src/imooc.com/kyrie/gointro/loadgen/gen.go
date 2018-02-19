@@ -129,6 +129,17 @@ func (gen *myGenerator) handleStopSignIn(callCount uint64)  {
 	gen.endSign <- callCount
 }
 
+// 这个调用过程就是这个载荷发生器的核心之一了
+// 1.首先要得从gorouite池里拿go票，结尾还要还回来
+// 2.其次，要考虑调用过程中可能会发生些不可预料的错误造成程序恐慌，导致程序运行不下去
+// 3.这里面省略掉的细节是为了不另起一个goroutie实现这个调用
+// 3.1 本来是用两个select做的，其中一个case异步接收interact方法的结果，另一个case同时做超时处理
+// 3.2 第一个改进是把interact收回到第一个case里面 <-func <-chan *lib.rawResponse {} 丢到匿名函数里面执行
+// 3.3 但case的特点是会导致这个方法执行太久（已经执行了），再区考虑第2个case,这样时间就不准了
+// 3.4 所以用到了time.AfterFunc函数（之前是time.After函数）
+// 3.5 既然用了AfterFunc函数，这是超时后的判断，但是如果我们在不超时情况下跑了interact方法，跑着跑着，时间到了，也会执行这个超时
+// 3.6 所以，不超时跑方法的时候，就需要先Stop掉这个超时（持续器）
+
 func (gen *myGenerator) asyncCall() {
 	gen.tickets.Take()
 	go func() {
@@ -156,6 +167,35 @@ func (gen *myGenerator) asyncCall() {
 				gen.SendResult(result)
 				}
 			}()
-		}()
-	}
+
+		rawRequest := gen.caller.BuildRequest()
+		var timeout bool
+		timer := time.AfterFunc(gen.timeoutNs, func() {
+			timeout = true
+			result := &lib.CallResult{
+				Id: rawRequest.Id,
+				Request: rawRequest,
+				Code: lib.CODE_WARNING_CALL_TIMEOUT,
+				Msg: fmt.Sprintf("Timeout! (expected: < %v)", gen.timeoutNs)}
+			gen.senResult(result)
+		})
+		rawResponse := gen.interact(&rawRequest)
+		if !timeout {
+			timer.Stop()
+			var result *lib.CallResult
+			if rawResponse.Error != nil {
+				result = &lib.CallResult{
+					Id: rawRequest.Id,
+					Request:rawRequest,
+					Code:lib.CODE_ERROR_CALL,
+					Msg:rawResponse.Error.Error(),
+					Elapse:rawResponse.Elapse}
+			} else {
+				result = gen.caller.CheckResponse(rawResponse, *rawResponse)
+				result.Elapse = rawResponse.Elapse
+			}
+			gen.sendResult(result)
+		}
+		gen.tickets.Return()
+	}()
 }
