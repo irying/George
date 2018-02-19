@@ -118,3 +118,12 @@ func (gen *myGenerator) genLoad(throttle <-chan time.Time)  {
 			}
 		}
 }
+
+func (gen *myGenerator) handleStopSignIn(callCount uint64)  {
+	// 先把信号值置成1
+	gen.cancelSign = 1
+	log.Println("Closing result channel...")
+	// 还要记得关闭resultChan
+	close(gen.resultCh)
+	gen.endSign <- callCount
+}
