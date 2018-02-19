@@ -108,19 +108,19 @@ func (gen *myGenerator) genLoad(throttle <-chan time.Time)  {
 				break Loop
 			default:
 			}
-			gen.asynCall()
+			gen.asyncCall()
 			if gen.lps > 0 {
 				select {
 				case <-gen.cancelSign:
 						gen.handleStopSign(callCount)
 						break Loop
-				case <-throttle
+				case <-throttle:
 				}
 			}
 		}
 }
 
-func (gen *myGenerator) handleStopSignIn(callCount uint64)  {
+func (gen *myGenerator) handleStopSign(callCount uint64)  {
 	// 先把信号值置成1
 	gen.cancelSign = 1
 	log.Println("Closing result channel...")
@@ -197,5 +197,44 @@ func (gen *myGenerator) asyncCall() {
 			gen.sendResult(result)
 		}
 		gen.tickets.Return()
+	}()
+}
+
+// 这个start也做了很多东西
+// 1.设定throttle
+// 2.AfterFunc 虽然看起来是初始化停止信号，但实际做的是持续一段时间就over
+// 3.初始化endSign通道、状态、调用计数
+func (gen *myGenerator) Start() ()  {
+	log.Println("Starting load generator...")
+	// 设定节流阀
+	var throttle <-chan time.Time
+	if gen.lps > 0 {
+		interval := time.Duration(1e9 / gen.lps)
+		log.Printf("Setting throttle (%v)...", interval)
+		throttle = time.Tick(interval)
+	}
+
+	// 初始化停止信号
+	go func() {
+		time.AfterFunc(gen.durationNs, func() {
+			log.Println("Stopping load generator...")
+			gen.stopSign <- 0
+		})
+	}()
+
+	// 初始化完结信号通道
+	gen.endSign = make(chan uint64, 1)
+	// 初始化调用执行计数
+	gen.callCount = 0
+	// 设置已启动状态
+	go func() {
+		// 生成载荷
+		log.Println("Generating loads...")
+		gen.genLoad(throttle)
+
+		// 接收调用执行计数
+		callCount := <-gen.endSign
+		gen.status = lib.STATUS_STOPPED
+		log.Printf("Stopped. (callCount=%d)\n", callCount)
 	}()
 }
