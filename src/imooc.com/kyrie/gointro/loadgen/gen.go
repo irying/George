@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"errors"
 	"math"
+	"bytes"
 )
 
 // 3类东西组成，
@@ -126,4 +127,35 @@ func (gen *myGenerator) handleStopSignIn(callCount uint64)  {
 	// 还要记得关闭resultChan
 	close(gen.resultCh)
 	gen.endSign <- callCount
+}
+
+func (gen *myGenerator) asyncCall() {
+	gen.tickets.Take()
+	go func() {
+		// 调用过程中的未预料到的错误or调用器自身的错误
+		// 不能让运行时的恐慌外泄并影响到正常流程的进行
+		defer func() {
+			if p := recover(); p !=nil {
+				err, ok := interface{}(p).(error)
+				var buff bytes.Buffer
+				buff.WriteString("Async Call Panic!(")
+				if ok {
+					buff.WriteString("eror: ")
+					buff.WriteString(err.Error())
+				} else {
+					buff.WriteString("clue: ")
+					buff.WriteString(fmt.Sprintf("%v", p))
+				}
+				buff.WriteString(")")
+				errMsg := buff.String()
+				log.Fatalln(errMsg)
+				result := &lib.CallResult{
+					Id: -1,
+					Code: lib.CODE_FATAL_CALL,
+					Msg: errMsg}
+				gen.SendResult(result)
+				}
+			}()
+		}()
+	}
 }
