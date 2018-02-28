@@ -5,7 +5,14 @@ import (
 	"io"
 	"encoding/binary"
 	"math/rand"
+	"time"
 )
+
+var startTime time.Time
+
+func Init()  {
+	startTime = time.Now()
+}
 
 func ArraySource( a ...int ) <- chan int {
 	out := make(chan int)
