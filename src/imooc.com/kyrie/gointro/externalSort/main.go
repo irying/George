@@ -29,7 +29,7 @@ func CreateNetWorkPipeline(fileName string, fileSize int, chunkCount int) <-chan
 		file.Seek(int64(i*chunkSize), 0)
 		source := pipeline.ReaderSource(bufio.NewReader(file), chunkSize)
 		addr := ":" + strconv.Itoa(7000 + i)
-		pipeline.NetworkSink(addr, source)
+		pipeline.NetworkSink(addr, pipeline.InMemorySort(source))
 		sortAddr = append(sortAddr, addr)
 	}
 
