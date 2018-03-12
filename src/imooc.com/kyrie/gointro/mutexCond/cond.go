@@ -25,3 +25,7 @@ type myDataFile struct {
 	roffset int64
 	dataLen uint32
 }
+
+func NewDataFile(path string, dataLen)  {
+
+}
