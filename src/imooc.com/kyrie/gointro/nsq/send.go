@@ -20,7 +20,7 @@ func main() {
 	for running {
 		data, _, _ := reader.ReadLine()
 		command := string(data)
-		if command == "stop"{
+		if command == "stop" {
 			running = false
 		}
 
