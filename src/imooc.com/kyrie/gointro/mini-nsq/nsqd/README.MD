@@ -142,7 +142,7 @@ loop:
 1. `workTicker`定时器触发扫描流程。 nsqd采用了Redis的probabilistic expiration算法来进行扫描。首先从所有Channel中随机选取部分Channel，然后遍历被选取的Channel，投到`workerChan`中，并且等待反馈结果， 结果有两种，dirty和非dirty，如果dirty的比例超过配置中设定的`QueueScanDirtyPercent`，**那么不进入休眠， 继续扫描，如果比例较低，则重新等待定时器触发下一轮扫描。**这种机制可以在保证处理延时较低的情况下减少对CPU资源的浪费。
 2. `refreshTicker`**定时器触发更新Channel列表流程**。 这个流程比较简单，先获取一次Channel列表， 再调用`resizePool`重新分配worker。
 
-获取channel出来	
+ 获取channel出来
 
 ```Go
 func (n *NSQD) channels() []*Channel {
@@ -188,3 +188,14 @@ func (n *NSQD) queueScanWorker(workCh chan *Channel, responseCh chan bool, close
 }
 ```
 
+
+
+
+
+消息分发可靠性
+
+会把发送到客户端的信息存到inFlightMessages和inFlightPQ，当一条消息被发送给client之后，如果在指定时间内仍没有收到客户端的响应的话，NSQ会把本次发送当做失败处理，消息还在队列中。如果收到客户端响应，FIN信号，消息就完成，从队列跟map中删除
+
+
+
+nsqd启动的时候有个计划任务，定期扫描这些队列，进行发送。如果有多个消费者的话
