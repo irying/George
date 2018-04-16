@@ -69,7 +69,7 @@ func newHTTPServer(ctx *context) *httpServer {
 
 这些工作没做好，是不够完整和谨慎的。
 
-#### 1.分配grouting，相当于worker
+#### 1.分配goroutine，相当于worker
 
 ```go
 func (n *NSQD) resizePool(num int, workCh chan *Channel, responseCh chan bool, closeCh chan int)  {
@@ -102,19 +102,19 @@ func (n *NSQD) resizePool(num int, workCh chan *Channel, responseCh chan bool, c
 
 #### 2.处理中断的情况
 
-```
+```go
 select {
-		case <-workTicker.C:
-			if len(channels) == 0 {
-				continue
-			}
-		case <-refreshTicker.C:
-			channels = n.channels()
-			n.resizePool(len(channels), workCh, responseCh, closeCh)
-			continue
-		case <-n.exitChan:
-			goto exit
-		}
+  case <-workTicker.C:
+    if len(channels) == 0 {
+      continue
+    }
+  case <-refreshTicker.C:
+    channels = n.channels()
+    n.resizePool(len(channels), workCh, responseCh, closeCh)
+    continue
+  case <-n.exitChan:
+  	goto exit
+}
 ```
 
 
