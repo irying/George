@@ -36,7 +36,7 @@ todo:参考// https://golang.org/src/net/http/server.go#L2274 完善下断线重
 ```go
 func forward(destination net.Conn, source net.Conn) {
 	io.Copy(destination, source)
-	log.Printf("relay: done copying from %v to %v\n", 		     source.LocalAddr().String(), destination.RemoteAddr().String())
+	log.Printf("relay: done copying from %v to %v\n", source.LocalAddr().String(), destination.RemoteAddr().String())
 	tcpConnection := destination.(*net.TCPConn)
 	tcpConnection.CloseWrite()
 }
