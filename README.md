@@ -31,7 +31,7 @@
 >
 > 对于proxy来说，正确的做法是透传双方的行为。**因此，当你read(client_side_socket)返回0时，你应该对另外一端调用shutdown(server_side_socket, send)，这样服务器就会read返回0，你透明的传递了这个行为。**那么作为proxy，**你什么时候才能close呢？client_socket和server_socket上read都返回了0，或者有任何一方返回了-1时你可以close。**当然你也可以考虑设置一个超时时间，如果线路上超过5分钟没有数据你就断开，但这是另一个维度的问题。
 
-
+todo:参考// https://golang.org/src/net/http/server.go#L2274 完善下断线重连
 
 ```go
 func forward(destination net.Conn, source net.Conn) {
