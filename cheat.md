@@ -9,7 +9,7 @@ https://blog.csdn.net/phantom_111/article/details/54670598
 len(s) == 0用于求数组、切片和字典的长度。 
 
 ## 类型转换
- string to uint32
+### string to uint32
  
 package main
 
@@ -29,7 +29,7 @@ func main() {
 }
 
 
-uint32 to string
+### uint32 to string
 
 down vote
 accepted
